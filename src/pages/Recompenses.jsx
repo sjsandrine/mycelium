@@ -47,15 +47,11 @@ function ConfigCoutModal({ profil, onConfirm }) {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm px-4 pb-6">
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 w-full max-w-lg">
         <p className="text-white font-semibold mb-1">Définis le coût de ton indulgence</p>
-        <p className="text-sm text-neutral-500 mb-5">
-          🎯 {profil.quete_nom} — {profil.quete_unite}
-        </p>
+        <p className="text-sm text-neutral-500 mb-5">🎯 {profil.quete_nom} — {profil.quete_unite}</p>
         <div className="flex flex-col gap-3">
           <div className="relative">
             <input
-              type="number"
-              min="1"
-              step="1"
+              type="number" min="1" step="1"
               value={cout}
               onChange={e => setCout(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleConfirm()}
@@ -63,9 +59,7 @@ function ConfigCoutModal({ profil, onConfirm }) {
               autoFocus
               className="w-full px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-violet-500 transition-colors pr-14"
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm pointer-events-none">
-              pts
-            </span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm pointer-events-none">pts</span>
           </div>
           <button
             type="button"
@@ -102,12 +96,7 @@ function RecompenseModal({ onClose, onAdd }) {
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 w-full max-w-lg">
         <div className="flex items-center justify-between mb-4">
           <p className="text-white font-semibold">Nouvelle récompense</p>
-          <button
-            onClick={onClose}
-            className="text-neutral-500 hover:text-white text-xl leading-none transition-colors"
-          >
-            ✕
-          </button>
+          <button onClick={onClose} className="text-neutral-500 hover:text-white text-xl leading-none transition-colors">✕</button>
         </div>
         <div className="flex flex-col gap-3">
           <input
@@ -121,18 +110,14 @@ function RecompenseModal({ onClose, onAdd }) {
           />
           <div className="relative">
             <input
-              type="number"
-              min="1"
-              step="1"
+              type="number" min="1" step="1"
               value={cout}
               onChange={e => setCout(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Coût en points…"
               className="w-full px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-violet-500 transition-colors pr-12"
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm pointer-events-none">
-              pts
-            </span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 text-sm pointer-events-none">pts</span>
           </div>
           <button
             type="button"
@@ -153,29 +138,30 @@ function RecompenseModal({ onClose, onAdd }) {
 export default function Recompenses() {
   const { session } = useAuth()
 
-  const [loading,             setLoading]             = useState(true)
-  const [profil,              setProfil]              = useState(null)
-  const [journalPts,          setJournalPts]          = useState(0)
-  const [recompenses,         setRecompenses]         = useState([])
-  const [achetes,             setAchetes]             = useState([])
-  const [queteCochee,         setQueteCochee]         = useState(false)
-  const [queteValeur,         setQueteValeur]         = useState(null)  // today's quete_valeur
-  // Récompense catalogue state
-  const [showModal,           setShowModal]           = useState(false)
-  const [using,               setUsing]               = useState(null)
-  const [confirmed,           setConfirmed]           = useState(null)
-  const [pendingDel,          setPendingDel]          = useState(null)
-  // Indulgence state
-  const [showCoutModal,       setShowCoutModal]       = useState(false)
-  const [editingCout,         setEditingCout]         = useState(false)
-  const [coutInput,           setCoutInput]           = useState('')
-  const [quantite,            setQuantite]            = useState('')
-  const [savingIndulgence,    setSavingIndulgence]    = useState(false)
-  const [indulgConfirmed,     setIndulgConfirmed]     = useState(false)
+  const [loading,          setLoading]          = useState(true)
+  const [profil,           setProfil]           = useState(null)
+  const [journalPts,       setJournalPts]       = useState(0)
+  const [catalogue,        setCatalogue]        = useState([])   // table recompenses
+  const [achetes,          setAchetes]          = useState([])   // recompenses_achetees type='recompense'
+  const [indulgences,      setIndulgences]      = useState([])   // recompenses_achetees type='indulgence'
+  const [queteCochee,      setQueteCochee]      = useState(false)
+  const [queteValeur,      setQueteValeur]      = useState(null) // total du jour dans journal
+  // Catalogue
+  const [showModal,        setShowModal]        = useState(false)
+  const [using,            setUsing]            = useState(null)
+  const [confirmed,        setConfirmed]        = useState(null)
+  const [pendingDel,       setPendingDel]       = useState(null)
+  // Indulgence
+  const [showCoutModal,    setShowCoutModal]    = useState(false)
+  const [editingCout,      setEditingCout]      = useState(false)
+  const [coutInput,        setCoutInput]        = useState('')
+  const [quantite,         setQuantite]         = useState('')
+  const [savingIndulgence, setSavingIndulgence] = useState(false)
+  const [indulgConfirmed,  setIndulgConfirmed]  = useState(false)
 
-  const confirmTimer   = useRef(null)
-  const deleteTimer    = useRef(null)
-  const indulgTimer    = useRef(null)
+  const confirmTimer  = useRef(null)
+  const deleteTimer   = useRef(null)
+  const indulgTimer   = useRef(null)
 
   useEffect(() => {
     if (!session) return
@@ -188,7 +174,7 @@ export default function Recompenses() {
         .eq('user_id', uid).maybeSingle(),
       supabase.from('journal').select('pts_gagnes_jour').eq('user_id', uid),
       supabase.from('recompenses').select('*').eq('user_id', uid).order('created_at'),
-      supabase.from('recompenses_achetees').select('cout_paye').eq('user_id', uid),
+      supabase.from('recompenses_achetees').select('*').eq('user_id', uid),
       supabase.from('journal')
         .select('quete_cochee, quete_valeur')
         .eq('user_id', uid).eq('date', today).maybeSingle(),
@@ -196,19 +182,23 @@ export default function Recompenses() {
       const p = profRes.data ?? null
       setProfil(p)
       setJournalPts((journalRes.data ?? []).reduce((s, r) => s + (r.pts_gagnes_jour ?? 0), 0))
-      setRecompenses(recRes.error ? [] : (recRes.data ?? []))
-      setAchetes(achtRes.error ? [] : (achtRes.data ?? []))
+      setCatalogue(recRes.error ? [] : (recRes.data ?? []))
+
+      const allAchetes = achtRes.error ? [] : (achtRes.data ?? [])
+      // Séparer les achats de récompenses et les indulgences
+      setAchetes(allAchetes.filter(r => !r.type || r.type === 'recompense'))
+      setIndulgences(allAchetes.filter(r => r.type === 'indulgence'))
+
       setQueteCochee(todayRes.data?.quete_cochee ?? false)
       setQueteValeur(todayRes.data?.quete_valeur ?? null)
-      // Ouvrir la modal de config si la quête est active mais sans coût défini
-      if (p?.quete_active && !(p?.quete_cout_unite > 0)) {
-        setShowCoutModal(true)
-      }
+
+      if (p?.quete_active && !(p?.quete_cout_unite > 0)) setShowCoutModal(true)
       setLoading(false)
     })
   }, [session])
 
-  // Points disponibles (en tenant compte de l'indulgence déjà comptabilisée)
+  // ptsDisponible = gains totaux − achats de récompenses seulement
+  // L'indulgence est déjà déduite dans pts_gagnes_jour par Aujourd'hui
   const ptsDisponible = Math.max(
     0,
     journalPts - achetes.reduce((s, r) => s + (r.cout_paye ?? 0), 0)
@@ -221,8 +211,8 @@ export default function Recompenses() {
     setUsing(rec.id)
     const { data, error } = await supabase
       .from('recompenses_achetees')
-      .insert({ user_id: session.user.id, nom: rec.nom, cout_paye: rec.cout_points })
-      .select('cout_paye')
+      .insert({ user_id: session.user.id, nom: rec.nom, cout_paye: rec.cout_points, type: 'recompense' })
+      .select()
       .single()
     setUsing(null)
     if (error) return
@@ -244,7 +234,7 @@ export default function Recompenses() {
     const { error } = await supabase
       .from('recompenses').delete()
       .eq('id', recId).eq('user_id', session.user.id)
-    if (!error) setRecompenses(prev => prev.filter(r => r.id !== recId))
+    if (!error) setCatalogue(prev => prev.filter(r => r.id !== recId))
   }, [session, pendingDel])
 
   const handleAjouter = useCallback(async ({ nom, cout_points }) => {
@@ -253,7 +243,7 @@ export default function Recompenses() {
       .from('recompenses')
       .insert({ user_id: session.user.id, nom, cout_points })
       .select().single()
-    if (!error && data) setRecompenses(prev => [...prev, data])
+    if (!error && data) setCatalogue(prev => [...prev, data])
   }, [session])
 
   // ── Indulgence ───────────────────────────────────────────────────────────────
@@ -261,9 +251,7 @@ export default function Recompenses() {
   const handleConfigurerCout = useCallback(async (cout) => {
     if (!session) return
     const { error } = await supabase
-      .from('user_profile')
-      .update({ quete_cout_unite: cout })
-      .eq('user_id', session.user.id)
+      .from('user_profile').update({ quete_cout_unite: cout }).eq('user_id', session.user.id)
     if (!error) {
       setProfil(prev => ({ ...prev, quete_cout_unite: cout }))
       setShowCoutModal(false)
@@ -274,9 +262,7 @@ export default function Recompenses() {
     const c = Number(coutInput)
     if (!c || c <= 0 || !session) return
     const { error } = await supabase
-      .from('user_profile')
-      .update({ quete_cout_unite: c })
-      .eq('user_id', session.user.id)
+      .from('user_profile').update({ quete_cout_unite: c }).eq('user_id', session.user.id)
     if (!error) {
       setProfil(prev => ({ ...prev, quete_cout_unite: c }))
       setEditingCout(false)
@@ -289,21 +275,39 @@ export default function Recompenses() {
     const coutUnite = profil?.quete_cout_unite ?? 0
     if (!q || q <= 0 || !coutUnite) return
 
-    setSavingIndulgence(true)
-    const { error } = await supabase
-      .from('journal')
-      .upsert(
-        { user_id: session.user.id, date: todayISO(), quete_valeur: q },
-        { onConflict: 'user_id,date' }
-      )
-    setSavingIndulgence(false)
-    if (error) return
+    // Additivité : on s'ajoute à la valeur existante du jour
+    const newTotal  = (queteValeur ?? 0) + q
+    const cout_paye = coutUnite * q
 
-    // Mise à jour optimiste : ajuster journalPts selon l'écart entre ancienne et nouvelle indulgence
-    const ancienCout = coutUnite * (queteValeur ?? 0)
-    const nouveauCout = coutUnite * q
-    setJournalPts(prev => Math.max(0, prev - (nouveauCout - ancienCout)))
-    setQueteValeur(q)
+    setSavingIndulgence(true)
+
+    // 1. Historique dans recompenses_achetees (type='indulgence')
+    const { data: achtData, error: achtErr } = await supabase
+      .from('recompenses_achetees')
+      .insert({
+        user_id:   session.user.id,
+        nom:       profil.quete_nom,
+        cout_paye,
+        type:      'indulgence',
+        quantite:  q,
+        unite:     profil.quete_unite,
+      })
+      .select()
+      .single()
+
+    // 2. Mise à jour additive de quete_valeur dans le journal
+    await supabase.from('journal').upsert(
+      { user_id: session.user.id, date: todayISO(), quete_valeur: newTotal },
+      { onConflict: 'user_id,date' }
+    )
+
+    setSavingIndulgence(false)
+
+    // 3. Mises à jour locales
+    if (!achtErr && achtData) setIndulgences(prev => [...prev, achtData])
+    // Mise à jour optimiste du solde (Aujourd'hui déduira officiellement au prochain save)
+    setJournalPts(prev => Math.max(0, prev - cout_paye))
+    setQueteValeur(newTotal)
     setQuantite('')
     setIndulgConfirmed(true)
     clearTimeout(indulgTimer.current)
@@ -322,66 +326,55 @@ export default function Recompenses() {
 
   const coutUnite = profil?.quete_cout_unite ?? 0
 
+  // Indulgence du jour (depuis le state local mis à jour)
+  const todayStr          = todayISO()
+  const todayIndulgences  = indulgences.filter(r => r.created_at?.startsWith(todayStr))
+  const todayQuantiteUsed = todayIndulgences.reduce((s, r) => s + Number(r.quantite ?? 0), 0)
+
   return (
     <div className="flex flex-col gap-4 p-4 pb-6">
 
-      {/* Modals */}
-      {showModal && (
-        <RecompenseModal onClose={() => setShowModal(false)} onAdd={handleAjouter} />
-      )}
+      {showModal && <RecompenseModal onClose={() => setShowModal(false)} onAdd={handleAjouter} />}
       {showCoutModal && profil?.quete_active && (
         <ConfigCoutModal profil={profil} onConfirm={handleConfigurerCout} />
       )}
 
       {/* ── Section 1 : Solde actuel ──────────────────────────────────── */}
       <Card className="text-center py-7">
-        <p className="text-xs text-neutral-500 uppercase tracking-wider font-medium mb-3">
-          Points disponibles
-        </p>
-        <p className="text-6xl font-bold text-violet-400 leading-none tabular-nums">
-          {ptsDisponible}
-        </p>
+        <p className="text-xs text-neutral-500 uppercase tracking-wider font-medium mb-3">Points disponibles</p>
+        <p className="text-6xl font-bold text-violet-400 leading-none tabular-nums">{ptsDisponible}</p>
         <p className="text-sm text-neutral-500 mt-3">points à dépenser</p>
       </Card>
 
       {/* ── Section 2 : Mes récompenses ──────────────────────────────── */}
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <p className="text-xs text-neutral-500 uppercase tracking-wider font-medium">
-            Mes récompenses
-          </p>
-          {recompenses.length < 5 && (
-            <button
-              type="button"
-              onClick={() => setShowModal(true)}
-              className="text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors"
-            >
+          <p className="text-xs text-neutral-500 uppercase tracking-wider font-medium">Mes récompenses</p>
+          {catalogue.length < 5 && (
+            <button type="button" onClick={() => setShowModal(true)}
+              className="text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors">
               + Ajouter
             </button>
           )}
         </div>
 
-        {recompenses.length === 0 ? (
+        {catalogue.length === 0 ? (
           <div className="flex flex-col items-center py-6 gap-4">
             <p className="text-sm text-neutral-500">Aucune récompense définie</p>
-            <button
-              type="button"
-              onClick={() => setShowModal(true)}
-              className="px-5 py-2.5 rounded-xl border border-dashed border-neutral-700 text-neutral-400 hover:border-violet-500 hover:text-violet-400 text-sm transition-colors"
-            >
+            <button type="button" onClick={() => setShowModal(true)}
+              className="px-5 py-2.5 rounded-xl border border-dashed border-neutral-700 text-neutral-400 hover:border-violet-500 hover:text-violet-400 text-sm transition-colors">
               + Créer ma première récompense
             </button>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {recompenses.map(rec => {
+            {catalogue.map(rec => {
               const peuUtiliser  = ptsDisponible >= rec.cout_points
               const isUsing      = using === rec.id
               const isConfirmed  = confirmed === rec.id
               const isPendingDel = pendingDel === rec.id
               return (
-                <div
-                  key={rec.id}
+                <div key={rec.id}
                   className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                     isConfirmed  ? 'border-green-600 bg-green-500/10' :
                     isPendingDel ? 'border-red-700 bg-red-500/10' :
@@ -397,9 +390,7 @@ export default function Recompenses() {
                     <p className="text-xs text-neutral-500 mt-0.5">{rec.cout_points} pts</p>
                   </div>
                   {!isPendingDel && (
-                    <button
-                      type="button"
-                      onClick={() => handleUtiliser(rec)}
+                    <button type="button" onClick={() => handleUtiliser(rec)}
                       disabled={!peuUtiliser || !!using || isConfirmed}
                       className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                         isConfirmed
@@ -412,9 +403,7 @@ export default function Recompenses() {
                       {isUsing ? '…' : isConfirmed ? '✓' : 'Utiliser'}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => handleSupprimer(rec.id)}
+                  <button type="button" onClick={() => handleSupprimer(rec.id)}
                     className={`shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       isPendingDel
                         ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
@@ -426,10 +415,8 @@ export default function Recompenses() {
                 </div>
               )
             })}
-            {recompenses.length >= 5 && (
-              <p className="text-xs text-neutral-600 text-center mt-1">
-                Maximum 5 récompenses atteint
-              </p>
+            {catalogue.length >= 5 && (
+              <p className="text-xs text-neutral-600 text-center mt-1">Maximum 5 récompenses atteint</p>
             )}
           </div>
         )}
@@ -438,19 +425,14 @@ export default function Recompenses() {
       {/* ── Section 3 : Indulgence ───────────────────────────────────── */}
       {profil?.quete_active && coutUnite > 0 && (
         <Card>
-          <p className="text-xs text-neutral-500 uppercase tracking-wider font-medium mb-3">
-            Indulgence
-          </p>
+          <p className="text-xs text-neutral-500 uppercase tracking-wider font-medium mb-3">Indulgence</p>
           <p className="text-sm text-white font-medium mb-4">🎯 {profil.quete_nom}</p>
 
-          {/* Coût par unité + crayon (visible uniquement au survol) */}
+          {/* Coût par unité + crayon au survol */}
           {!editingCout ? (
             <div className="group flex items-center gap-2 mb-4">
-              <p className="text-xs text-neutral-500">
-                {coutUnite} pts / {profil.quete_unite}
-              </p>
-              <button
-                type="button"
+              <p className="text-xs text-neutral-500">{coutUnite} pts / {profil.quete_unite}</p>
+              <button type="button"
                 onClick={() => { setEditingCout(true); setCoutInput(String(coutUnite)) }}
                 className="opacity-0 group-hover:opacity-100 transition-opacity text-neutral-600 hover:text-neutral-400 flex items-center"
                 aria-label="Modifier le coût"
@@ -461,64 +443,45 @@ export default function Recompenses() {
           ) : (
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               <div className="relative">
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
+                <input type="number" min="1" step="1"
                   value={coutInput}
                   onChange={e => setCoutInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSauvegarderCout(); if (e.key === 'Escape') setEditingCout(false) }}
                   autoFocus
                   className="w-24 px-3 py-1.5 rounded-lg bg-neutral-800 border border-neutral-700 text-white text-sm focus:outline-none focus:border-violet-500 transition-colors pr-9"
                 />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 text-xs pointer-events-none">
-                  pts
-                </span>
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 text-xs pointer-events-none">pts</span>
               </div>
               <span className="text-xs text-neutral-500">/ {profil.quete_unite}</span>
-              <button
-                type="button"
-                onClick={handleSauvegarderCout}
+              <button type="button" onClick={handleSauvegarderCout}
                 disabled={!coutInput || Number(coutInput) <= 0}
-                className="text-xs text-violet-400 hover:text-violet-300 disabled:opacity-40 transition-colors font-medium"
-              >
+                className="text-xs text-violet-400 hover:text-violet-300 disabled:opacity-40 font-medium transition-colors">
                 Sauvegarder
               </button>
-              <button
-                type="button"
-                onClick={() => setEditingCout(false)}
-                className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors"
-              >
+              <button type="button" onClick={() => setEditingCout(false)}
+                className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors">
                 Annuler
               </button>
             </div>
           )}
 
-          {/* Zone saisie quantité */}
+          {/* Zone saisie quantité (désactivée si résistance) */}
           <div className={queteCochee ? 'opacity-40 pointer-events-none select-none' : ''}>
             <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={quantite}
-                  onChange={e => setQuantite(e.target.value)}
-                  placeholder={`Quantité (${profil.quete_unite})…`}
-                  disabled={queteCochee}
-                  className="w-full px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-amber-500 transition-colors disabled:opacity-40"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleUtiliserIndulgence}
+              <input type="number" min="0" step="1"
+                value={quantite}
+                onChange={e => setQuantite(e.target.value)}
+                placeholder={`Quantité (${profil.quete_unite})…`}
+                disabled={queteCochee}
+                className="flex-1 px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-amber-500 transition-colors disabled:opacity-40"
+              />
+              <button type="button" onClick={handleUtiliserIndulgence}
                 disabled={
                   queteCochee ||
                   !quantite ||
                   Number(quantite) <= 0 ||
                   savingIndulgence ||
-                  // Points libres = dispo + ce qu'on avait déjà dépensé aujourd'hui (remplacé, pas cumulé)
-                  (ptsDisponible + coutUnite * (queteValeur ?? 0)) < coutUnite * Number(quantite)
+                  ptsDisponible < coutUnite * Number(quantite)
                 }
                 className="shrink-0 px-4 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold disabled:opacity-40 transition-colors"
               >
@@ -526,11 +489,9 @@ export default function Recompenses() {
               </button>
             </div>
 
-            {/* Coût total en temps réel */}
+            {/* Coût calculé en temps réel */}
             {Number(quantite) > 0 && (
-              <p className="text-xs text-red-400 mt-2">
-                −{coutUnite * Number(quantite)} pts
-              </p>
+              <p className="text-xs text-red-400 mt-2">−{coutUnite * Number(quantite)} pts</p>
             )}
 
             {/* Confirmation */}
@@ -538,11 +499,11 @@ export default function Recompenses() {
               <p className="text-xs text-green-400 mt-2">✓ Indulgence enregistrée</p>
             )}
 
-            {/* Déjà utilisé aujourd'hui */}
-            {!indulgConfirmed && (queteValeur ?? 0) > 0 && (
+            {/* Total déjà utilisé aujourd'hui (depuis recompenses_achetees chargées) */}
+            {!indulgConfirmed && todayQuantiteUsed > 0 && (
               <p className="text-xs text-neutral-600 mt-2">
-                Déjà utilisé aujourd'hui : {queteValeur} {profil.quete_unite}
-                {coutUnite > 0 ? ` (−${coutUnite * queteValeur} pts)` : ''}
+                Déjà utilisé aujourd'hui : {todayQuantiteUsed} {profil.quete_unite}
+                {' '}(−{coutUnite * todayQuantiteUsed} pts)
               </p>
             )}
           </div>
@@ -551,9 +512,7 @@ export default function Recompenses() {
           {queteCochee && (
             <div className="flex items-center gap-2 mt-3">
               <span className="text-base">🛡️</span>
-              <p className="text-xs text-green-400/80">
-                Résistance active — indulgence bloquée aujourd'hui
-              </p>
+              <p className="text-xs text-green-400/80">Résistance active — indulgence bloquée aujourd'hui</p>
             </div>
           )}
         </Card>

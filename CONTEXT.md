@@ -161,18 +161,31 @@ CREATE POLICY "own stats" ON user_stats FOR ALL USING (auth.uid() = user_id);
 ```
 *Note : actuellement calculée dynamiquement depuis `journal`, pas encore persistée.*
 
-### `recompenses_achetees` *(à créer si absente)*
+### `recompenses_achetees`
 ```sql
+-- Création initiale
 CREATE TABLE IF NOT EXISTS recompenses_achetees (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   nom        TEXT NOT NULL,
   cout_paye  INTEGER NOT NULL DEFAULT 0,
+  type       TEXT NOT NULL DEFAULT 'recompense',  -- 'recompense' | 'indulgence'
+  quantite   NUMERIC,          -- uniquement pour type='indulgence'
+  unite      TEXT,             -- uniquement pour type='indulgence'
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE recompenses_achetees ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "own recompenses" ON recompenses_achetees FOR ALL USING (auth.uid() = user_id);
+
+-- Migration si la table existe déjà sans ces colonnes
+ALTER TABLE recompenses_achetees
+  ADD COLUMN IF NOT EXISTS type     TEXT NOT NULL DEFAULT 'recompense',
+  ADD COLUMN IF NOT EXISTS quantite NUMERIC,
+  ADD COLUMN IF NOT EXISTS unite    TEXT;
 ```
+**Logique ptsDisponible :**
+`ptsDisponible = sum(journal.pts_gagnes_jour) − sum(recompenses_achetees.cout_paye WHERE type='recompense')`
+L'indulgence est déjà déduite dans `pts_gagnes_jour` par Aujourd'hui → pas de double-déduction.
 
 ---
 

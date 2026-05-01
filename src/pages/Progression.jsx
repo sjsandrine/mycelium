@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
-// ─── Constantes niveau/titres (identiques à Aujourdhui) ───────────────────────
+// ─── Constantes niveau/titres ─────────────────────────────────────────────────
 
 const XP_THRESHOLDS = [0, 100, 250, 500, 900, 1400, 2100, 3000, 4200, 5800]
 const TITLES = {
@@ -57,7 +57,6 @@ function computeStreaks(journalRows) {
   const resistedDates = new Set(journalRows.filter(r => r.quete_cochee).map(r => r.date))
   const allDates = new Set(journalRows.map(r => r.date))
 
-  // Série actuelle : depuis aujourd'hui en remontant
   let currentStreak = 0
   let cursor = toDateStr(new Date())
   for (let i = 0; i < 1000; i++) {
@@ -65,24 +64,19 @@ function computeStreaks(journalRows) {
       currentStreak++
       cursor = subtractDay(cursor)
     } else {
-      // Si aujourd'hui n'est pas encore saisi, on commence à hier
-      if (i === 0 && !allDates.has(cursor)) {
-        cursor = subtractDay(cursor)
-        continue
-      }
+      if (i === 0 && !allDates.has(cursor)) { cursor = subtractDay(cursor); continue }
       break
     }
   }
 
-  // Record : plus longue série consécutive
   const sorted = [...resistedDates].sort()
   let maxStreak = currentStreak
   let streak = 0
   let prev = null
   for (const ds of sorted) {
     if (prev) {
-      const diffDays = Math.round((new Date(ds + 'T00:00:00') - new Date(prev + 'T00:00:00')) / 86400000)
-      streak = diffDays === 1 ? streak + 1 : 1
+      const diff = Math.round((new Date(ds + 'T00:00:00') - new Date(prev + 'T00:00:00')) / 86400000)
+      streak = diff === 1 ? streak + 1 : 1
     } else {
       streak = 1
     }
@@ -91,6 +85,19 @@ function computeStreaks(journalRows) {
   }
 
   return { currentStreak, maxStreak }
+}
+
+// Regroupe les lignes indulgence par jour (agrège quantite + cout_paye)
+function groupIndulgencesByDay(indulgences) {
+  const byDay = {}
+  for (const ind of indulgences) {
+    const date = ind.created_at ? ind.created_at.split('T')[0] : null
+    if (!date) continue
+    if (!byDay[date]) byDay[date] = { date, quantite: 0, cout: 0, unite: ind.unite ?? '' }
+    byDay[date].quantite += Number(ind.quantite ?? 0)
+    byDay[date].cout     += Number(ind.cout_paye ?? 0)
+  }
+  return Object.values(byDay).sort((a, b) => b.date.localeCompare(a.date))
 }
 
 // ─── Composants UI ────────────────────────────────────────────────────────────
@@ -123,10 +130,11 @@ function StatRow({ label, value, sub }) {
 
 export default function Progression() {
   const { session } = useAuth()
-  const [loading, setLoading]       = useState(true)
-  const [profil, setProfil]         = useState(null)
-  const [journalRows, setJournal]   = useState([])
-  const [recompenses, setRecompenses] = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [profil,      setProfil]      = useState(null)
+  const [journalRows, setJournal]     = useState([])
+  const [recompenses, setRecompenses] = useState([])   // type='recompense'
+  const [indulgences, setIndulgences] = useState([])   // type='indulgence'
 
   useEffect(() => {
     if (!session) return
@@ -144,8 +152,9 @@ export default function Progression() {
     ]).then(([profRes, journalRes, recompRes]) => {
       setProfil(profRes.data ?? null)
       setJournal(journalRes.data ?? [])
-      // Table optionnelle : ignorer si elle n'existe pas encore
-      setRecompenses(recompRes.error ? [] : (recompRes.data ?? []))
+      const all = recompRes.error ? [] : (recompRes.data ?? [])
+      setRecompenses(all.filter(r => !r.type || r.type === 'recompense'))
+      setIndulgences(all.filter(r => r.type === 'indulgence'))
       setLoading(false)
     })
   }, [session])
@@ -158,28 +167,38 @@ export default function Progression() {
     )
   }
 
-  // ── Calculs ────────────────────────────────────────────────────────────────
+  // ── Calculs ──────────────────────────────────────────────────────────────────
 
-  const classe = profil?.classe ?? 'guerrier'
+  const classe        = profil?.classe ?? 'guerrier'
   const xpTotal       = journalRows.reduce((s, r) => s + (r.xp_gagnes_jour  ?? 0), 0)
   const ptsTotalGagne = journalRows.reduce((s, r) => s + (r.pts_gagnes_jour ?? 0), 0)
-  const ptsDependises = recompenses.reduce((s, r) => s + (r.cout_paye ?? r.cout ?? 0), 0)
-  const ptsDisponible = Math.max(0, ptsTotalGagne - ptsDependises)
+  // ptsDisponible = gains totaux − achats de récompenses seulement
+  // (l'indulgence est déjà déduite dans pts_gagnes_jour via Aujourd'hui)
+  const ptsDisponible = Math.max(0, ptsTotalGagne - recompenses.reduce((s, r) => s + (r.cout_paye ?? 0), 0))
   const joursFilles   = journalRows.length
 
   const { level, progress, xpToNext, isMax } = getLevelInfo(xpTotal)
   const classeTitle = TITLES[classe]?.[level - 1] ?? ''
 
-  // Moyennes 30 derniers jours
-  const cutoff = toDateStr((() => { const d = new Date(); d.setDate(d.getDate() - 30); return d })())
-  const recent    = journalRows.filter(r => r.date >= cutoff)
+  const cutoff     = toDateStr((() => { const d = new Date(); d.setDate(d.getDate() - 30); return d })())
+  const recent     = journalRows.filter(r => r.date >= cutoff)
   const avgHumeur  = avg(recent.map(r => r.humeur))
   const avgSommeil = avg(recent.filter(r => r.sommeil !== null).map(r => r.sommeil))
 
-  // Séries de résistance
   const { currentStreak, maxStreak } = computeStreaks(journalRows)
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // Indulgences regroupées
+  const indulgenceDays = groupIndulgencesByDay(indulgences)
+  const today          = toDateStr(new Date())
+  const monthStr       = today.slice(0, 7)   // 'YYYY-MM'
+  const unite          = profil?.quete_unite ?? ''
+
+  const todayInd = indulgenceDays.find(d => d.date === today) ?? { quantite: 0, cout: 0, unite }
+  const monthInd = indulgenceDays
+    .filter(d => d.date.startsWith(monthStr))
+    .reduce((acc, d) => ({ quantite: acc.quantite + d.quantite, cout: acc.cout + d.cout }), { quantite: 0, cout: 0 })
+
+  // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-6">
@@ -198,15 +217,10 @@ export default function Progression() {
           </div>
         </div>
         <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-violet-500 rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-full bg-violet-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
         </div>
         <p className="text-xs text-neutral-500 mt-2">
-          {isMax
-            ? 'Niveau maximum atteint — tu es une légende.'
-            : `${xpToNext} XP manquants pour le niveau ${level + 1}`}
+          {isMax ? 'Niveau maximum atteint — tu es une légende.' : `${xpToNext} XP manquants pour le niveau ${level + 1}`}
         </p>
       </Card>
 
@@ -237,23 +251,75 @@ export default function Progression() {
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-neutral-800 rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-green-400 leading-none">{currentStreak}</p>
-              <p className="text-xs text-neutral-500 mt-2">
-                {currentStreak <= 1 ? 'Jour de résistance' : 'Jours de résistance'}
-              </p>
+              <p className="text-xs text-neutral-500 mt-2">{currentStreak <= 1 ? 'Jour de résistance' : 'Jours de résistance'}</p>
               <p className="text-xs text-neutral-600 mt-0.5">Série actuelle</p>
             </div>
             <div className="bg-neutral-800 rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-violet-400 leading-none">{maxStreak}</p>
-              <p className="text-xs text-neutral-500 mt-2">
-                {maxStreak <= 1 ? 'Jour' : 'Jours'}
-              </p>
+              <p className="text-xs text-neutral-500 mt-2">{maxStreak <= 1 ? 'Jour' : 'Jours'}</p>
               <p className="text-xs text-neutral-600 mt-0.5">Record personnel</p>
             </div>
           </div>
         </Card>
       )}
 
-      {/* ── Section 4 : Récompenses utilisées ────────────────────────── */}
+      {/* ── Section 4 : Indulgences utilisées ────────────────────────── */}
+      {profil?.quete_active && (
+        <Card>
+          <SectionLabel>Indulgences utilisées</SectionLabel>
+          {indulgenceDays.length === 0 ? (
+            <p className="text-sm text-neutral-500 text-center py-3">Aucune indulgence enregistrée</p>
+          ) : (
+            <>
+              {/* Résumé du jour et du mois */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-neutral-800 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-amber-400 leading-none tabular-nums">
+                    {todayInd.quantite}
+                    <span className="text-xs font-normal text-neutral-400 ml-1">{unite}</span>
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-1.5">Aujourd'hui</p>
+                  {todayInd.cout > 0 && (
+                    <p className="text-xs text-red-400 mt-0.5">−{todayInd.cout} pts</p>
+                  )}
+                </div>
+                <div className="bg-neutral-800 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-amber-400 leading-none tabular-nums">
+                    {monthInd.quantite}
+                    <span className="text-xs font-normal text-neutral-400 ml-1">{unite}</span>
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-1.5">Ce mois</p>
+                  {monthInd.cout > 0 && (
+                    <p className="text-xs text-red-400 mt-0.5">−{monthInd.cout} pts</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Liste par jour */}
+              <div className="flex flex-col">
+                {indulgenceDays.map(day => (
+                  <div
+                    key={day.date}
+                    className="flex items-center justify-between py-2.5 border-b border-neutral-800 last:border-0"
+                  >
+                    <div>
+                      <p className="text-sm text-white">{formatDate(day.date)}</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        {day.quantite} {day.unite || unite}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-red-400 shrink-0 ml-4">
+                      −{day.cout} pts
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Card>
+      )}
+
+      {/* ── Section 5 : Récompenses utilisées ────────────────────────── */}
       <Card>
         <SectionLabel>Récompenses utilisées</SectionLabel>
         {recompenses.length === 0 ? (
@@ -263,13 +329,9 @@ export default function Progression() {
         ) : (
           <div className="flex flex-col">
             {recompenses.map((r, i) => {
-              const nom  = r.nom ?? r.recompense_nom ?? 'Récompense'
-              const cout = r.cout_paye ?? r.cout ?? 0
-              const date = r.created_at
-                ? formatDate(r.created_at.split('T')[0])
-                : r.date
-                  ? formatDate(r.date)
-                  : ''
+              const nom  = r.nom ?? 'Récompense'
+              const cout = r.cout_paye ?? 0
+              const date = r.created_at ? formatDate(r.created_at.split('T')[0]) : ''
               return (
                 <div
                   key={r.id ?? i}
@@ -279,9 +341,7 @@ export default function Progression() {
                     <p className="text-sm text-white">{nom}</p>
                     {date && <p className="text-xs text-neutral-500 mt-0.5">{date}</p>}
                   </div>
-                  <p className="text-sm font-semibold text-red-400 shrink-0 ml-4">
-                    −{cout} pts
-                  </p>
+                  <p className="text-sm font-semibold text-red-400 shrink-0 ml-4">−{cout} pts</p>
                 </div>
               )
             })}
