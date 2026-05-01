@@ -51,7 +51,7 @@ src/
     ├── Onboarding.jsx        # Wizard 6 étapes
     ├── Aujourdhui.jsx        # Onglet principal ✅
     ├── Progression.jsx       # Onglet progression ✅
-    ├── Recompenses.jsx       # Stub
+    ├── Recompenses.jsx       # Onglet récompenses ✅
     ├── Niveaux.jsx           # Stub
     └── Historique.jsx        # Stub
 ```
@@ -65,13 +65,14 @@ src/
 - **Onboarding** : wizard 6 étapes (classe, cycle menstruel, quête centrale, 2 habitudes, récap)
 - **Onglet Aujourd'hui** : trackers sommeil/humeur/libre, habitudes selfcare + responsabilités, quête centrale (résistance + indulgence), notes, journée minimum, auto-save 600 ms
 - **Onglet Progression** : niveau actuel + barre XP, stats globales (pts à vie, pts dispo, XP, jours remplis, moyennes humeur/sommeil 30 j), série de résistance + record, liste récompenses achetées
+- **Onglet Récompenses** : solde points dispo, catalogue perso (max 5, modal ajout, suppression 2 clics), bouton Utiliser → insert `recompenses_achetees`, rappel indulgence quête avec redirect vers Aujourd'hui
 
 ---
 
 ## Ce qui reste à faire
 
-- **Récompenses** : boutique pour dépenser les points disponibles → insère dans `recompenses_achetees`
-- **Niveaux** : tableau des 10 niveaux par classe, visualisation des seuils XP
+- **Récompenses** : ✅ fait — table `recompenses` à créer dans Supabase (SQL ci-dessous)
+- **Niveaux** : tableau des 10 niveaux par classe, visualisation des seuils XP — à faire
 - **Historique** : calendrier ou liste des journées passées avec stats
 - **Passe visuelle** : illustrations, animations, polish UI
 - **Publicités / monétisation** : à définir
@@ -130,6 +131,19 @@ journee_minimum    TEXT[] (['eau','manger','quitter'])
 pts_gagnes_jour    INTEGER
 xp_gagnes_jour     INTEGER
 PK: (user_id, date)
+```
+
+### `recompenses` *(catalogue personnel, à créer si absente)*
+```sql
+CREATE TABLE IF NOT EXISTS recompenses (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  nom         TEXT NOT NULL,
+  cout_points INTEGER NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE recompenses ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own recompenses catalogue" ON recompenses FOR ALL USING (auth.uid() = user_id);
 ```
 
 ### `user_stats` *(à créer si absente)*
