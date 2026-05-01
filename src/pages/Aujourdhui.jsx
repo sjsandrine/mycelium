@@ -246,7 +246,6 @@ export default function Aujourdhui() {
   const [habitudes,       setHabitudes]       = useState([])
   const [habitsCochees,   setHabitsCochees]   = useState(new Set())
   const [entry,           setEntry]           = useState(ENTRY_DEFAULT)
-  const [indulgenceInput, setIndulgenceInput] = useState('')
   const [loading,         setLoading]         = useState(true)
   const [showModal,       setShowModal]       = useState(null)
 
@@ -303,7 +302,6 @@ export default function Aujourdhui() {
 
       if (j) {
         console.log('[Aujourdhui] entrée du jour restaurée')
-        if (j.quete_valeur) setIndulgenceInput(String(j.quete_valeur))
       } else {
         console.log('[Aujourdhui] aucune entrée du jour en base')
       }
@@ -430,16 +428,6 @@ export default function Aujourdhui() {
     })
   }, [session])
 
-  // ── Utiliser indulgence ───────────────────────────────────────────────────────
-  const handleUtiliserIndulgence = useCallback(() => {
-    setEntry(prev => {
-      const next = { ...prev, quete_valeur: indulgenceInput }
-      stateRef.current = { ...stateRef.current, entry: next }
-      doSave()
-      return next
-    })
-  }, [indulgenceInput, doSave])
-
   // ── Toggle quête cochée ───────────────────────────────────────────────────────
   const toggleQueteCochee = useCallback(() => {
     setEntry(prev => {
@@ -471,8 +459,6 @@ export default function Aujourdhui() {
   const selfcare = habitudes.filter(h => h.type === 'selfcare')
   const respos   = habitudes.filter(h => h.type === 'responsabilite')
 
-  const indulgenceCostPreview = (profil?.quete_cout_unite ?? 0) * (Number(indulgenceInput) || 0)
-  const indulgenceUsedCost    = (profil?.quete_cout_unite ?? 0) * (Number(entry.quete_valeur) || 0)
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -521,6 +507,8 @@ export default function Aujourdhui() {
       <Card>
         <p className="text-sm font-semibold text-neutral-200 mb-4">Trackers</p>
         <div className="flex flex-col gap-5">
+
+          {/* Sommeil */}
           <div>
             <FieldLabel>Sommeil (heures)</FieldLabel>
             <input
@@ -531,6 +519,8 @@ export default function Aujourdhui() {
               className="mt-2 w-full px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-violet-500 transition-colors"
             />
           </div>
+
+          {/* Humeur */}
           <div>
             <div className="flex justify-between items-center mb-2">
               <FieldLabel>Humeur</FieldLabel>
@@ -546,27 +536,48 @@ export default function Aujourdhui() {
               <span>1</span><span>5</span><span>10</span>
             </div>
           </div>
-        </div>
-      </Card>
 
-      {/* ── Tracker libre ─────────────────────────────────────────────── */}
-      <Card>
-        <FieldLabel>Tracker libre</FieldLabel>
-        <div className="flex gap-3 mt-2">
-          <input
-            type="text"
-            value={entry.tracker4_nom}
-            onChange={e => update('tracker4_nom', e.target.value)}
-            placeholder="Nom…"
-            className="flex-1 px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-violet-500 transition-colors text-sm"
-          />
-          <input
-            type="number" min="0" step="1"
-            value={entry.tracker4_valeur}
-            onChange={e => update('tracker4_valeur', e.target.value)}
-            placeholder="0"
-            className="w-20 px-3 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-violet-500 transition-colors text-center"
-          />
+          {/* Compteur quête centrale */}
+          {profil?.quete_active && (
+            <div className={entry.quete_cochee ? 'opacity-40 pointer-events-none select-none' : ''}>
+              <FieldLabel>{profil.quete_nom} — {profil.quete_unite}</FieldLabel>
+              <input
+                type="number" min="0" step="1"
+                value={entry.quete_valeur}
+                onChange={e => update('quete_valeur', e.target.value)}
+                placeholder="0"
+                disabled={entry.quete_cochee}
+                className="mt-2 w-full px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-violet-500 transition-colors disabled:opacity-40"
+              />
+              {Number(entry.quete_valeur) > 0 && (profil?.quete_cout_unite ?? 0) > 0 && (
+                <p className="text-xs text-red-400 mt-1.5">
+                  −{profil.quete_cout_unite * Number(entry.quete_valeur)} pts
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Tracker personnalisé */}
+          <div>
+            <FieldLabel>{entry.tracker4_nom || 'Tracker personnalisé'}</FieldLabel>
+            <div className="flex gap-3 mt-2">
+              <input
+                type="text"
+                value={entry.tracker4_nom}
+                onChange={e => update('tracker4_nom', e.target.value)}
+                placeholder="Nom du tracker…"
+                className="flex-1 px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-violet-500 transition-colors text-sm"
+              />
+              <input
+                type="number" min="0" step="1"
+                value={entry.tracker4_valeur}
+                onChange={e => update('tracker4_valeur', e.target.value)}
+                placeholder="0"
+                className="w-20 px-3 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-violet-500 transition-colors text-center"
+              />
+            </div>
+          </div>
+
         </div>
       </Card>
 
@@ -597,13 +608,11 @@ export default function Aujourdhui() {
       {profil?.quete_active && (
         <Card>
           <FieldLabel>Quête centrale</FieldLabel>
-          <p className="text-white font-semibold text-sm mt-0.5 mb-4">🎯 {profil.quete_nom}</p>
-
-          {/* Résistance */}
+          <p className="text-white font-semibold text-sm mt-0.5 mb-3">🎯 {profil.quete_nom}</p>
           <button
             type="button"
             onClick={toggleQueteCochee}
-            className={`flex items-center gap-3 w-full text-left p-3 rounded-xl border mb-4 transition-all ${
+            className={`flex items-center gap-3 w-full text-left p-3 rounded-xl border transition-all ${
               entry.quete_cochee
                 ? 'border-green-500 bg-green-500/10'
                 : 'border-neutral-700 hover:border-neutral-600 bg-neutral-800/30'
@@ -619,38 +628,6 @@ export default function Aujourdhui() {
             </span>
             <span className="text-xs text-neutral-600 shrink-0">+{20 * mult} pts · +{20 * mult} XP</span>
           </button>
-
-          {/* Indulgence */}
-          <div className={entry.quete_cochee ? 'opacity-40 pointer-events-none select-none' : ''}>
-            <FieldLabel>Indulgence — {profil.quete_unite}</FieldLabel>
-            <div className="flex items-center gap-3 mt-2">
-              <input
-                type="number" min="0" step="1"
-                value={indulgenceInput}
-                onChange={e => setIndulgenceInput(e.target.value)}
-                placeholder="0"
-                disabled={entry.quete_cochee}
-                className="w-24 px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-violet-500 transition-colors text-center disabled:opacity-40"
-              />
-              <span className="flex-1 text-sm text-red-400">
-                {indulgenceCostPreview > 0 ? `−${indulgenceCostPreview} pts` : ''}
-              </span>
-              <button
-                type="button"
-                onClick={handleUtiliserIndulgence}
-                disabled={entry.quete_cochee || !indulgenceInput || Number(indulgenceInput) <= 0}
-                className="px-4 py-2.5 rounded-xl bg-red-900/50 border border-red-800/60 text-red-400 text-sm font-medium hover:bg-red-900/80 disabled:opacity-40 transition-colors"
-              >
-                Utiliser
-              </button>
-            </div>
-            {Number(entry.quete_valeur) > 0 && (
-              <p className="text-xs text-neutral-500 mt-2">
-                Utilisé aujourd'hui : {entry.quete_valeur} {profil.quete_unite}
-                {indulgenceUsedCost > 0 ? ` (−${indulgenceUsedCost} pts)` : ''}
-              </p>
-            )}
-          </div>
         </Card>
       )}
 
