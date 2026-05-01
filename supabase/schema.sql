@@ -4,14 +4,15 @@
 
 -- user_profile
 create table if not exists public.user_profile (
-  user_id           uuid primary key references auth.users(id) on delete cascade,
-  classe            text check (classe in ('guerrier', 'magicien', 'commercant')),
-  cycle_actif       boolean default false,
-  quete_active      boolean default false,
-  quete_nom         text,
-  quete_unite       text,
+  user_id             uuid primary key references auth.users(id) on delete cascade,
+  classe              text check (classe in ('guerrier', 'magicien', 'commercant')),
+  cycle_actif         boolean default false,
+  cycle_debut         date,
+  quete_active        boolean default false,
+  quete_nom           text,
+  quete_unite         text,
   onboarding_complete boolean default false,
-  created_at        timestamptz default now()
+  created_at          timestamptz default now()
 );
 
 -- habitudes
@@ -25,12 +26,31 @@ create table if not exists public.habitudes (
   created_at  timestamptz default now()
 );
 
+-- journal
+create table if not exists public.journal (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users(id) on delete cascade,
+  date              date not null,
+  sommeil           numeric,
+  humeur            smallint check (humeur between 1 and 10),
+  journee_difficile boolean default false,
+  quete_valeur      numeric,
+  tracker4_nom      text,
+  tracker4_valeur   numeric,
+  journee_minimum   text[] default '{}',
+  pts_gagnes_jour   integer default 0,
+  xp_gagnes_jour    integer default 0,
+  created_at        timestamptz default now(),
+  unique (user_id, date)
+);
+
 -- ============================================================
 -- Row Level Security
 -- ============================================================
 
 alter table public.user_profile enable row level security;
 alter table public.habitudes    enable row level security;
+alter table public.journal      enable row level security;
 
 -- user_profile policies
 create policy "select own profile"
@@ -57,3 +77,21 @@ create policy "insert own habitudes"
 create policy "update own habitudes"
   on public.habitudes for update
   using (auth.uid() = user_id);
+
+-- journal policies
+create policy "select own journal"
+  on public.journal for select
+  using (auth.uid() = user_id);
+
+create policy "insert own journal"
+  on public.journal for insert
+  with check (auth.uid() = user_id);
+
+create policy "update own journal"
+  on public.journal for update
+  using (auth.uid() = user_id);
+
+-- ============================================================
+-- Migration : ajouter cycle_debut si la table existe déjà
+-- ============================================================
+-- alter table public.user_profile add column if not exists cycle_debut date;
