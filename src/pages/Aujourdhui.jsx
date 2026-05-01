@@ -99,14 +99,31 @@ export default function Aujourdhui() {
   useEffect(() => {
     if (!session) return
     const uid = session.user.id
+    const today = todayISO()
+    console.log('[Aujourdhui] chargement uid=', uid, 'date=', today)
+
     Promise.all([
       supabase.from('user_profile').select('*').eq('user_id', uid).maybeSingle(),
-      supabase.from('journal').select('*').eq('user_id', uid).eq('date', todayISO()).maybeSingle(),
+      supabase.from('journal').select('*').eq('user_id', uid).eq('date', today).maybeSingle(),
       supabase.from('journal').select('xp_gagnes_jour').eq('user_id', uid),
-    ]).then(([{ data: p }, { data: j }, { data: xpRows }]) => {
+    ]).then(([profRes, journalRes, xpRes]) => {
+      console.log('[Aujourdhui] user_profile ->', profRes)
+      console.log('[Aujourdhui] journal aujourd\'hui ->', journalRes)
+      console.log('[Aujourdhui] xp rows ->', xpRes)
+
+      if (profRes.error) console.error('[Aujourdhui] erreur user_profile', profRes.error)
+      if (journalRes.error) console.error('[Aujourdhui] erreur journal', journalRes.error)
+      if (xpRes.error) console.error('[Aujourdhui] erreur xp', xpRes.error)
+
+      const p = profRes.data
+      const j = journalRes.data
+      const xpRows = xpRes.data
+
       setProfil(p)
       profRef.current = p
+
       if (j) {
+        console.log('[Aujourdhui] entrée du jour trouvée, restauration des champs')
         setEntry({
           sommeil: j.sommeil ?? '',
           humeur: j.humeur ?? 5,
@@ -116,18 +133,25 @@ export default function Aujourdhui() {
           tracker4_valeur: j.tracker4_valeur ?? '',
           journee_minimum: j.journee_minimum ?? [],
         })
+      } else {
+        console.log('[Aujourdhui] aucune entrée du jour en base')
       }
+
       setTotalXp(xpRows?.reduce((s, r) => s + (r.xp_gagnes_jour ?? 0), 0) ?? 0)
       setLoading(false)
     })
   }, [session])
 
   const doSave = useCallback((next) => {
-    if (!session || !profRef.current) return
+    if (!session) return
+    // profRef.current peut être null si le profil n'existe pas encore — on sauvegarde quand même
+    if (!profRef.current) {
+      console.warn('[Aujourdhui] doSave appelé mais profRef.current est null, on continue quand même')
+    }
     clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
+    saveTimer.current = setTimeout(async () => {
       const pts = next.journee_minimum.length * 5 * (next.journee_difficile ? 2 : 1)
-      supabase.from('journal').upsert({
+      const payload = {
         user_id: session.user.id,
         date: todayISO(),
         sommeil: next.sommeil !== '' ? Number(next.sommeil) : null,
@@ -139,7 +163,17 @@ export default function Aujourdhui() {
         journee_minimum: next.journee_minimum,
         pts_gagnes_jour: pts,
         xp_gagnes_jour: 0,
-      }, { onConflict: 'user_id,date' })
+      }
+      console.log('[Aujourdhui] upsert journal ->', payload)
+      const { data, error } = await supabase
+        .from('journal')
+        .upsert(payload, { onConflict: 'user_id,date' })
+        .select()
+      if (error) {
+        console.error('[Aujourdhui] erreur upsert journal', error)
+      } else {
+        console.log('[Aujourdhui] upsert OK ->', data)
+      }
     }, 600)
   }, [session])
 
