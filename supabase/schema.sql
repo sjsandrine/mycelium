@@ -1,5 +1,5 @@
 -- ============================================================
--- Tables Mycelium — à exécuter dans le SQL Editor Supabase
+-- Tables Mycelium — idempotent, ré-exécutable sans erreur
 -- ============================================================
 
 -- user_profile
@@ -14,6 +14,8 @@ create table if not exists public.user_profile (
   onboarding_complete boolean default false,
   created_at          timestamptz default now()
 );
+
+alter table public.user_profile add column if not exists cycle_debut date;
 
 -- habitudes
 create table if not exists public.habitudes (
@@ -52,46 +54,53 @@ alter table public.user_profile enable row level security;
 alter table public.habitudes    enable row level security;
 alter table public.journal      enable row level security;
 
--- user_profile policies
+-- ── user_profile ─────────────────────────────────────────────────────────────
+
+drop policy if exists "select own profile" on public.user_profile;
 create policy "select own profile"
   on public.user_profile for select
   using (auth.uid() = user_id);
 
+drop policy if exists "insert own profile" on public.user_profile;
 create policy "insert own profile"
   on public.user_profile for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "update own profile" on public.user_profile;
 create policy "update own profile"
   on public.user_profile for update
   using (auth.uid() = user_id);
 
--- habitudes policies
+-- ── habitudes ─────────────────────────────────────────────────────────────────
+
+drop policy if exists "select own habitudes" on public.habitudes;
 create policy "select own habitudes"
   on public.habitudes for select
   using (auth.uid() = user_id);
 
+drop policy if exists "insert own habitudes" on public.habitudes;
 create policy "insert own habitudes"
   on public.habitudes for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "update own habitudes" on public.habitudes;
 create policy "update own habitudes"
   on public.habitudes for update
   using (auth.uid() = user_id);
 
--- journal policies
+-- ── journal ───────────────────────────────────────────────────────────────────
+
+drop policy if exists "select own journal" on public.journal;
 create policy "select own journal"
   on public.journal for select
   using (auth.uid() = user_id);
 
+drop policy if exists "insert own journal" on public.journal;
 create policy "insert own journal"
   on public.journal for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "update own journal" on public.journal;
 create policy "update own journal"
   on public.journal for update
   using (auth.uid() = user_id);
-
--- ============================================================
--- Migration : ajouter cycle_debut si la table existe déjà
--- ============================================================
--- alter table public.user_profile add column if not exists cycle_debut date;
