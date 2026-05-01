@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { supabase } from './lib/supabase'
@@ -44,22 +44,24 @@ function AppContent() {
   const { session, loading: authLoading } = useAuth()
   const [onboardingDone, setOnboardingDone] = useState(null)
 
-  useEffect(() => {
-    if (!session) {
-      setOnboardingDone(null)
-      return
-    }
-    supabase
+  const checkProfile = useCallback(async () => {
+    if (!session) { setOnboardingDone(null); return }
+    const { data, error } = await supabase
       .from('user_profile')
       .select('onboarding_complete')
       .eq('user_id', session.user.id)
       .maybeSingle()
-      .then(({ data }) => setOnboardingDone(data?.onboarding_complete ?? false))
+    if (error) console.error('[App] erreur lecture profil', error)
+    setOnboardingDone(data?.onboarding_complete ?? false)
   }, [session])
+
+  useEffect(() => {
+    checkProfile()
+  }, [checkProfile])
 
   if (authLoading || (session && onboardingDone === null)) return <Spinner />
   if (!session) return <Auth />
-  if (!onboardingDone) return <Onboarding onComplete={() => setOnboardingDone(true)} />
+  if (!onboardingDone) return <Onboarding onComplete={checkProfile} />
   return <MainApp />
 }
 
