@@ -227,11 +227,9 @@ export default function Progression() {
       {/* ── Section 2 : Statistiques globales ────────────────────────── */}
       <Card>
         <SectionLabel>Statistiques globales</SectionLabel>
-        <StatRow label="Points totaux gagnés à vie"     value={ptsTotalGagne}          sub="pts" />
-        <StatRow label="Points disponibles"              value={ptsDisponible}          sub="pts" />
-        <StatRow label="Points dépensés en récompenses" value={ptsDepensesRecompenses} sub="pts" />
-        <StatRow label="Points dépensés en indulgences" value={ptsDepensesIndulgences} sub="pts" />
-        <StatRow label="XP total"                        value={xpTotal}                sub="XP"  />
+        <StatRow label="Points totaux gagnés à vie" value={ptsTotalGagne} sub="pts" />
+        <StatRow label="Points disponibles"         value={ptsDisponible} sub="pts" />
+        <StatRow label="XP total"                   value={xpTotal}       sub="XP"  />
         <StatRow label="Jours remplis"              value={joursFilles}   sub="jours" />
         <StatRow
           label="Humeur moyenne (30 jours)"
@@ -281,9 +279,6 @@ export default function Progression() {
                     <span className="text-xs font-normal text-neutral-400 ml-1">{unite}</span>
                   </p>
                   <p className="text-xs text-neutral-500 mt-1.5">Aujourd'hui</p>
-                  {todayInd.cout > 0 && (
-                    <p className="text-xs text-neutral-500 mt-0.5">{todayInd.cout} pts</p>
-                  )}
                 </div>
                 <div className="bg-neutral-800 rounded-xl p-3 text-center">
                   <p className="text-xl font-bold text-amber-400 leading-none tabular-nums">
@@ -291,9 +286,6 @@ export default function Progression() {
                     <span className="text-xs font-normal text-neutral-400 ml-1">{unite}</span>
                   </p>
                   <p className="text-xs text-neutral-500 mt-1.5">Ce mois</p>
-                  {monthInd.cout > 0 && (
-                    <p className="text-xs text-neutral-500 mt-0.5">{monthInd.cout} pts</p>
-                  )}
                 </div>
               </div>
 
@@ -304,14 +296,9 @@ export default function Progression() {
                     key={day.date}
                     className="flex items-center justify-between py-2.5 border-b border-neutral-800 last:border-0"
                   >
-                    <div>
-                      <p className="text-sm text-white">{formatDate(day.date)}</p>
-                      <p className="text-xs text-neutral-500 mt-0.5">
-                        {day.quantite} {day.unite || unite}
-                      </p>
-                    </div>
-                    <p className="text-sm font-semibold text-neutral-400 shrink-0 ml-4">
-                      {day.cout} pts
+                    <p className="text-sm text-white">{formatDate(day.date)}</p>
+                    <p className="text-sm font-semibold text-amber-400 shrink-0 ml-4">
+                      {day.quantite} {day.unite || unite}
                     </p>
                   </div>
                 ))}
@@ -330,23 +317,22 @@ export default function Progression() {
           </p>
         ) : (
           <div className="flex flex-col">
-            {recompenses.map((r, i) => {
-              const nom  = r.nom ?? 'Récompense'
-              const cout = r.cout_paye ?? 0
-              const date = r.created_at ? formatDate(r.created_at.split('T')[0]) : ''
-              return (
-                <div
-                  key={r.id ?? i}
-                  className="flex items-center justify-between py-2.5 border-b border-neutral-800 last:border-0"
-                >
-                  <div>
-                    <p className="text-sm text-white">{nom}</p>
-                    {date && <p className="text-xs text-neutral-500 mt-0.5">{date}</p>}
-                  </div>
-                  <p className="text-sm font-semibold text-neutral-400 shrink-0 ml-4">{cout} pts</p>
-                </div>
-              )
-            })}
+            {Object.values(
+              recompenses.reduce((acc, r) => {
+                const nom = r.nom ?? 'Récompense'
+                if (!acc[nom]) acc[nom] = { nom, count: 0 }
+                acc[nom].count++
+                return acc
+              }, {})
+            ).sort((a, b) => b.count - a.count).map((r, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between py-2.5 border-b border-neutral-800 last:border-0"
+              >
+                <p className="text-sm text-white">{r.nom}</p>
+                <p className="text-sm font-semibold text-neutral-400 shrink-0 ml-4">× {r.count}</p>
+              </div>
+            ))}
           </div>
         )}
       </Card>

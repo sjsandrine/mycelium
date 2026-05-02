@@ -178,11 +178,18 @@ export default function Recompenses() {
         .select('quete_cochee, quete_valeur')
         .eq('user_id', uid).eq('date', today).maybeSingle(),
     ]).then(([profRes, journalRes, recRes, achtRes, todayRes]) => {
-      const p = profRes.data ?? null
-      setProfil(p)
-      setJournalPts((journalRes.data ?? []).reduce((s, r) => s + (r.pts_gagnes_jour ?? 0), 0))
-      setCatalogue(recRes.error ? [] : (recRes.data ?? []))
+      console.log('[Recompenses] uid=', uid)
+      console.log('[Recompenses] journalRes ->', journalRes)
+      console.log('[Recompenses] achtRes ->', achtRes)
 
+      const p = profRes.data ?? null
+      const journalData = journalRes.error ? [] : (journalRes.data ?? [])
+      const pts = journalData.reduce((s, r) => s + (r.pts_gagnes_jour ?? 0), 0)
+      console.log('[Recompenses] pts_gagnes_jour total ->', pts)
+
+      setProfil(p)
+      setJournalPts(pts)
+      setCatalogue(recRes.error ? [] : (recRes.data ?? []))
       setAchetes(achtRes.error ? [] : (achtRes.data ?? []))
 
       setQueteCochee(todayRes.data?.quete_cochee ?? false)
