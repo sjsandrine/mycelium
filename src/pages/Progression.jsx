@@ -172,9 +172,9 @@ export default function Progression() {
   const classe        = profil?.classe ?? 'guerrier'
   const xpTotal       = journalRows.reduce((s, r) => s + (r.xp_gagnes_jour  ?? 0), 0)
   const ptsTotalGagne = journalRows.reduce((s, r) => s + (r.pts_gagnes_jour ?? 0), 0)
-  // ptsDisponible = gains totaux − achats de récompenses seulement
-  // (l'indulgence est déjà déduite dans pts_gagnes_jour via Aujourd'hui)
-  const ptsDisponible = Math.max(0, ptsTotalGagne - recompenses.reduce((s, r) => s + (r.cout_paye ?? 0), 0))
+  const ptsDepensesRecompenses = recompenses.reduce((s, r) => s + (r.cout_paye ?? 0), 0)
+  const ptsDepensesIndulgences = indulgences.reduce((s, r) => s + (r.cout_paye ?? 0), 0)
+  const ptsDisponible = Math.max(0, ptsTotalGagne - ptsDepensesRecompenses - ptsDepensesIndulgences)
   const joursFilles   = journalRows.length
 
   const { level, progress, xpToNext, isMax } = getLevelInfo(xpTotal)
@@ -227,9 +227,11 @@ export default function Progression() {
       {/* ── Section 2 : Statistiques globales ────────────────────────── */}
       <Card>
         <SectionLabel>Statistiques globales</SectionLabel>
-        <StatRow label="Points totaux gagnés à vie" value={ptsTotalGagne} sub="pts" />
-        <StatRow label="Points disponibles"         value={ptsDisponible} sub="pts" />
-        <StatRow label="XP total"                   value={xpTotal}       sub="XP"  />
+        <StatRow label="Points totaux gagnés à vie"     value={ptsTotalGagne}          sub="pts" />
+        <StatRow label="Points disponibles"              value={ptsDisponible}          sub="pts" />
+        <StatRow label="Points dépensés en récompenses" value={ptsDepensesRecompenses} sub="pts" />
+        <StatRow label="Points dépensés en indulgences" value={ptsDepensesIndulgences} sub="pts" />
+        <StatRow label="XP total"                        value={xpTotal}                sub="XP"  />
         <StatRow label="Jours remplis"              value={joursFilles}   sub="jours" />
         <StatRow
           label="Humeur moyenne (30 jours)"
@@ -280,7 +282,7 @@ export default function Progression() {
                   </p>
                   <p className="text-xs text-neutral-500 mt-1.5">Aujourd'hui</p>
                   {todayInd.cout > 0 && (
-                    <p className="text-xs text-red-400 mt-0.5">−{todayInd.cout} pts</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{todayInd.cout} pts</p>
                   )}
                 </div>
                 <div className="bg-neutral-800 rounded-xl p-3 text-center">
@@ -290,7 +292,7 @@ export default function Progression() {
                   </p>
                   <p className="text-xs text-neutral-500 mt-1.5">Ce mois</p>
                   {monthInd.cout > 0 && (
-                    <p className="text-xs text-red-400 mt-0.5">−{monthInd.cout} pts</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{monthInd.cout} pts</p>
                   )}
                 </div>
               </div>
@@ -308,8 +310,8 @@ export default function Progression() {
                         {day.quantite} {day.unite || unite}
                       </p>
                     </div>
-                    <p className="text-sm font-semibold text-red-400 shrink-0 ml-4">
-                      −{day.cout} pts
+                    <p className="text-sm font-semibold text-neutral-400 shrink-0 ml-4">
+                      {day.cout} pts
                     </p>
                   </div>
                 ))}
@@ -341,7 +343,7 @@ export default function Progression() {
                     <p className="text-sm text-white">{nom}</p>
                     {date && <p className="text-xs text-neutral-500 mt-0.5">{date}</p>}
                   </div>
-                  <p className="text-sm font-semibold text-red-400 shrink-0 ml-4">−{cout} pts</p>
+                  <p className="text-sm font-semibold text-neutral-400 shrink-0 ml-4">{cout} pts</p>
                 </div>
               )
             })}

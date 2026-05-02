@@ -68,7 +68,7 @@ function cycleDay(debut) {
 }
 
 // Définie hors composant : pas de stale closure dans le timeout de doSave
-function computeTotals({ entry, habitsCochees, habitudes, profil }) {
+function computeTotals({ entry, habitsCochees, habitudes }) {
   const mult = entry.journee_difficile ? 2 : 1
   const jminPts = entry.journee_minimum.length * 5 * mult
   let habPts = 0, habXp = 0
@@ -81,9 +81,8 @@ function computeTotals({ entry, habitsCochees, habitudes, profil }) {
   }
   const quetePts = entry.quete_cochee ? 20 * mult : 0
   const queteXp  = entry.quete_cochee ? 20 * mult : 0
-  const indulgenceCost = (profil?.quete_cout_unite ?? 0) * (Number(entry.quete_valeur) || 0)
   return {
-    pts: Math.max(0, jminPts + habPts + quetePts - indulgenceCost),
+    pts: jminPts + habPts + quetePts,
     xp:  habXp + queteXp,
   }
 }
@@ -249,8 +248,9 @@ export default function Aujourdhui() {
   const [loading,         setLoading]         = useState(true)
   const [showModal,       setShowModal]       = useState(null)
 
-  const saveTimer = useRef(null)
-  const stateRef  = useRef({ entry: ENTRY_DEFAULT, habitsCochees: new Set(), habitudes: [], profil: null })
+  const saveTimer        = useRef(null)
+  const stateRef         = useRef({ entry: ENTRY_DEFAULT, habitsCochees: new Set(), habitudes: [], profil: null })
+  const queteValeurFloor = useRef(0)
 
   // Sync stateRef après chaque render (fallback si une mise à jour a été manquée)
   useEffect(() => {
@@ -312,6 +312,7 @@ export default function Aujourdhui() {
       setEntry(loadedEntry)
       setTotalXpLifetime(xpRows.reduce((s, r) => s + (r.xp_gagnes_jour ?? 0), 0))
       stateRef.current = { entry: loadedEntry, habitsCochees: coch, habitudes: habs, profil: p }
+      queteValeurFloor.current = Number(loadedEntry.quete_valeur) || 0
       setLoading(false)
     })
   }, [session])
@@ -450,7 +451,7 @@ export default function Aujourdhui() {
   const classe = profil?.classe ?? 'guerrier'
   const { level, progress, xpToNext, isMax } = getLevelInfo(totalXpLifetime)
   const classeTitle = TITLES[classe]?.[level - 1] ?? ''
-  const totals   = computeTotals({ entry, habitsCochees, habitudes, profil })
+  const totals   = computeTotals({ entry, habitsCochees, habitudes })
   const mult     = entry.journee_difficile ? 2 : 1
 
   const humeurColor = entry.humeur <= 2 ? 'text-red-400' : entry.humeur <= 5 ? 'text-yellow-400' : 'text-green-400'
@@ -542,18 +543,23 @@ export default function Aujourdhui() {
             <div className={entry.quete_cochee ? 'opacity-40 pointer-events-none select-none' : ''}>
               <FieldLabel>{profil.quete_nom} — {profil.quete_unite}</FieldLabel>
               <input
-                type="number" min="0" step="1"
+                type="number" min={queteValeurFloor.current} step="1"
                 value={entry.quete_valeur}
-                onChange={e => update('quete_valeur', e.target.value)}
+                onChange={e => {
+                  const raw = e.target.value
+                  if (raw !== '' && Number(raw) < queteValeurFloor.current) return
+                  update('quete_valeur', raw)
+                  if (raw !== '' && Number(raw) > queteValeurFloor.current) queteValeurFloor.current = Number(raw)
+                }}
+                onBlur={e => {
+                  const v = Number(e.target.value)
+                  if (!e.target.value || isNaN(v) || v < queteValeurFloor.current)
+                    update('quete_valeur', queteValeurFloor.current > 0 ? String(queteValeurFloor.current) : '')
+                }}
                 placeholder="0"
                 disabled={entry.quete_cochee}
                 className="mt-2 w-full px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 text-white placeholder-neutral-600 focus:outline-none focus:border-violet-500 transition-colors disabled:opacity-40"
               />
-              {Number(entry.quete_valeur) > 0 && (profil?.quete_cout_unite ?? 0) > 0 && (
-                <p className="text-xs text-red-400 mt-1.5">
-                  −{profil.quete_cout_unite * Number(entry.quete_valeur)} pts
-                </p>
-              )}
             </div>
           )}
 

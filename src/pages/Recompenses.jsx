@@ -142,8 +142,7 @@ export default function Recompenses() {
   const [profil,           setProfil]           = useState(null)
   const [journalPts,       setJournalPts]       = useState(0)
   const [catalogue,        setCatalogue]        = useState([])   // table recompenses
-  const [achetes,          setAchetes]          = useState([])   // recompenses_achetees type='recompense'
-  const [indulgences,      setIndulgences]      = useState([])   // recompenses_achetees type='indulgence'
+  const [achetes,          setAchetes]          = useState([])   // recompenses_achetees (all types)
   const [queteCochee,      setQueteCochee]      = useState(false)
   const [queteValeur,      setQueteValeur]      = useState(null) // total du jour dans journal
   // Catalogue
@@ -184,10 +183,7 @@ export default function Recompenses() {
       setJournalPts((journalRes.data ?? []).reduce((s, r) => s + (r.pts_gagnes_jour ?? 0), 0))
       setCatalogue(recRes.error ? [] : (recRes.data ?? []))
 
-      const allAchetes = achtRes.error ? [] : (achtRes.data ?? [])
-      // Séparer les achats de récompenses et les indulgences
-      setAchetes(allAchetes.filter(r => !r.type || r.type === 'recompense'))
-      setIndulgences(allAchetes.filter(r => r.type === 'indulgence'))
+      setAchetes(achtRes.error ? [] : (achtRes.data ?? []))
 
       setQueteCochee(todayRes.data?.quete_cochee ?? false)
       setQueteValeur(todayRes.data?.quete_valeur ?? null)
@@ -197,8 +193,6 @@ export default function Recompenses() {
     })
   }, [session])
 
-  // ptsDisponible = gains totaux − achats de récompenses seulement
-  // L'indulgence est déjà déduite dans pts_gagnes_jour par Aujourd'hui
   const ptsDisponible = Math.max(
     0,
     journalPts - achetes.reduce((s, r) => s + (r.cout_paye ?? 0), 0)
@@ -209,14 +203,13 @@ export default function Recompenses() {
   const handleUtiliser = useCallback(async (rec) => {
     if (!session || using) return
     setUsing(rec.id)
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('recompenses_achetees')
       .insert({ user_id: session.user.id, nom: rec.nom, cout_paye: rec.cout_points, type: 'recompense' })
-      .select()
-      .single()
     setUsing(null)
     if (error) return
-    setAchetes(prev => [...prev, data])
+    const { data } = await supabase.from('recompenses_achetees').select('*').eq('user_id', session.user.id)
+    setAchetes(data ?? [])
     setConfirmed(rec.id)
     clearTimeout(confirmTimer.current)
     confirmTimer.current = setTimeout(() => setConfirmed(null), 2200)
@@ -275,40 +268,30 @@ export default function Recompenses() {
     const coutUnite = profil?.quete_cout_unite ?? 0
     if (!q || q <= 0 || !coutUnite) return
 
-    // Additivité : on s'ajoute à la valeur existante du jour
     const newTotal  = (queteValeur ?? 0) + q
     const cout_paye = coutUnite * q
 
     setSavingIndulgence(true)
 
-    // 1. Historique dans recompenses_achetees (type='indulgence')
-    const { data: achtData, error: achtErr } = await supabase
-      .from('recompenses_achetees')
-      .insert({
-        user_id:   session.user.id,
-        nom:       profil.quete_nom,
-        cout_paye,
-        type:      'indulgence',
-        quantite:  q,
-        unite:     profil.quete_unite,
-      })
-      .select()
-      .single()
+    await supabase.from('recompenses_achetees').insert({
+      user_id:  session.user.id,
+      nom:      profil.quete_nom,
+      cout_paye,
+      type:     'indulgence',
+      quantite: q,
+      unite:    profil.quete_unite,
+    })
 
-    // 2. Mise à jour additive de quete_valeur dans le journal
     await supabase.from('journal').upsert(
       { user_id: session.user.id, date: todayISO(), quete_valeur: newTotal },
       { onConflict: 'user_id,date' }
     )
 
-    setSavingIndulgence(false)
-
-    // 3. Mises à jour locales
-    if (!achtErr && achtData) setIndulgences(prev => [...prev, achtData])
-    // Mise à jour optimiste du solde (Aujourd'hui déduira officiellement au prochain save)
-    setJournalPts(prev => Math.max(0, prev - cout_paye))
+    const { data } = await supabase.from('recompenses_achetees').select('*').eq('user_id', session.user.id)
+    setAchetes(data ?? [])
     setQueteValeur(newTotal)
     setQuantite('')
+    setSavingIndulgence(false)
     setIndulgConfirmed(true)
     clearTimeout(indulgTimer.current)
     indulgTimer.current = setTimeout(() => setIndulgConfirmed(false), 2000)
@@ -328,7 +311,7 @@ export default function Recompenses() {
 
   // Indulgence du jour (depuis le state local mis à jour)
   const todayStr          = todayISO()
-  const todayIndulgences  = indulgences.filter(r => r.created_at?.startsWith(todayStr))
+  const todayIndulgences  = achetes.filter(r => r.type === 'indulgence' && r.created_at?.startsWith(todayStr))
   const todayQuantiteUsed = todayIndulgences.reduce((s, r) => s + Number(r.quantite ?? 0), 0)
 
   return (
@@ -491,7 +474,7 @@ export default function Recompenses() {
 
             {/* Coût calculé en temps réel */}
             {Number(quantite) > 0 && (
-              <p className="text-xs text-red-400 mt-2">−{coutUnite * Number(quantite)} pts</p>
+              <p className="text-xs text-neutral-400 mt-2">{coutUnite * Number(quantite)} pts</p>
             )}
 
             {/* Confirmation */}
@@ -503,7 +486,7 @@ export default function Recompenses() {
             {!indulgConfirmed && todayQuantiteUsed > 0 && (
               <p className="text-xs text-neutral-600 mt-2">
                 Déjà utilisé aujourd'hui : {todayQuantiteUsed} {profil.quete_unite}
-                {' '}(−{coutUnite * todayQuantiteUsed} pts)
+                {' '}({coutUnite * todayQuantiteUsed} pts)
               </p>
             )}
           </div>
